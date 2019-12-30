@@ -35,7 +35,7 @@ class GSCourse():
         membership_resp = self.session.get('https://www.gradescope.com/courses/' + self.cid + '/memberships')
         parsed_membership_resp = BeautifulSoup(membership_resp.text, 'html.parser')
 
-        authenticity_token = parsed_membership_resp.find('meta', attrs = {'name': 'csrf-token'} ).get('content')        
+        authenticity_token = parsed_membership_resp.find('meta', attrs = {'name': 'csrf-token'} ).get('content')
         person_params = {
             "utf8": "✓",
             "user[name]" : name,
@@ -54,6 +54,29 @@ class GSCourse():
         print(add_resp.status_code)
         print(add_resp.headers)
         print(add_resp.request.body)
+        # TODO this is highly wasteful, need to likely improve this. 
+        self.roster = {}
+        self._lazy_load_roster()
+
+    def remove_person(self, name):
+        self._check_capabilities({LoadedCapabilities.ROSTER})
+        
+        membership_resp = self.session.get('https://www.gradescope.com/courses/' + self.cid + '/memberships')
+        parsed_membership_resp = BeautifulSoup(membership_resp.text, 'html.parser')
+
+        authenticity_token = parsed_membership_resp.find('meta', attrs = {'name': 'csrf-token'} ).get('content')
+        remove_params = {
+            "_method" : "delete",
+            "authenticity_token" : authenticity_token
+        }
+        remove_resp = self.session.post('https://www.gradescope.com/courses/'+self.cid+'/memberships/'
+                                     +self.roster[name].data_id,
+                                     data = remove_params,
+                                     headers = {'x-csrf-token': authenticity_token})
+
+        print(remove_resp.status_code)
+        print(remove_resp.headers)
+        print(remove_resp.request.body)
         # TODO this is highly wasteful, need to likely improve this. 
         self.roster = {}
         self._lazy_load_roster()
@@ -104,6 +127,7 @@ class GSCourse():
         
         for row in roster_table:
             name = row[0].text.rsplit(' ', 1)[0]
+            data_id = row[0].find('button', class_ = 'rosterCell--editIcon').get('data-id')
             if len(row) == 6:
                 email = row[1].text
                 role = row[2].find('option', selected="selected").text
@@ -115,7 +139,7 @@ class GSCourse():
                 submissions = int(row[4].text)
                 linked = True if 'statusIcon-active' in row[5].find('i').get('class') else False
             # TODO Make types reasonable.
-            self.roster[name] = GSPerson(name, email, role, submissions, linked)
+            self.roster[name] = GSPerson(name, data_id, email, role, submissions, linked)
         self.state.add(LoadedCapabilities.ROSTER)
         
     def _check_capabilities(self, needed):
