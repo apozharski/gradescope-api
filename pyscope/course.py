@@ -29,6 +29,8 @@ class GSCourse():
         self.roster = {} # TODO: Maybe shouldn't dict. 
         self.state = set() # Set of already loaded entitites (TODO what is the pythonic way to do this?)
 
+    # ~~~~~~~~~~~~~~~~~~~~~~PEOPLE~~~~~~~~~~~~~~~~~~~~~~~
+
     def add_person(self, name, email, role, sid = None, notify = False):
         self._check_capabilities({LoadedCapabilities.ROSTER})
         
@@ -103,6 +105,71 @@ class GSCourse():
         self.roster = {}
         self._lazy_load_roster()
 
+    # ~~~~~~~~~~~~~~~~~~~~~~ASSIGNMENTS~~~~~~~~~~~~~~~~~~~~~~~
+
+    def add_assignment(self,
+                       name,
+                       release,
+                       due,
+                       template_file,
+                       student_submissions = True,
+                       late_submissions = False,
+                       group_submissions = 0):
+        self._check_capabilities({LoadedCapabilities.ASSIGNMENTS})
+        
+        assignment_resp = self.session.get('https://www.gradescope.com/courses/'+self.cid+'/assignments')
+        parsed_assignment_resp = BeautifulSoup(assignment_resp.text, 'html.parser')
+        authenticity_token = parsed_assignment_resp.find('meta', attrs = {'name': 'csrf-token'} ).get('content')
+
+        # TODO Make this less brittle and make sure to support all options properly
+        assignment_params = {
+            "authenticity_token" : authenticity_token,
+            "assignment[title]" : name,
+            "assignment[student_submission]" : student_submissions,
+            "assignment[release_date_string]" : release,
+            "assignment[due_date_string]" : due,
+            "assignment[allow_late_submissions]" : 1 if late_submissions else 0,
+            "assignment[submission_type]" : "image", # TODO What controls this?
+            "assignment[group_submission]" : group_submissions
+        }
+        assignment_files = {
+            "template_pdf" : open(template_file, 'rb')
+        }
+        assignment_resp = self.session.post('https://www.gradescope.com/courses/'+self.cid+'/assignments',
+                                            files = assignment_files,
+                                            data = assignment_params)
+
+        print(assignment_resp.status_code)
+        print(assignment_resp.headers)
+        print(assignment_resp.request.headers)
+
+        # TODO this is highly wasteful, need to likely improve this. 
+        self.assignments = {}
+        self._lazy_load_assignments()
+        
+    def remove_assignment(self, name):
+        self._check_capabilities({LoadedCapabilities.ASSIGNMENTS})
+        
+        assignment_resp = self.session.get('https://www.gradescope.com/courses/'+self.cid+'/assignments/'
+                                           +self.assignments[name].aid+'/edit')
+        parsed_assignment_resp = BeautifulSoup(assignment_resp.text, 'html.parser')
+        authenticity_token = parsed_assignment_resp.find('meta', attrs = {'name': 'csrf-token'} ).get('content')
+
+        remove_params = {
+            "_method" : "delete",
+            "authenticity_token" : authenticity_token
+        }
+
+        remove_resp = self.session.post('https://www.gradescope.com/courses/'+self.cid+'/assignments/'
+                                     +self.assignments[name].aid,
+                                     data = remove_params)
+
+        print(remove_resp.status_code)
+        print(remove_resp.headers)
+        # TODO this is highly wasteful, need to likely improve this. 
+        self.assignments = {}
+        self._lazy_load_assignments()
+        
     def _lazy_load_assignments(self):
         '''
         Load the assignment dictionary from assignments. This is done lazily to avoid slowdown caused by getting
