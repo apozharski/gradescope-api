@@ -81,6 +81,28 @@ class GSCourse():
         self.roster = {}
         self._lazy_load_roster()
 
+    def change_person_role(self, name, role):
+        self._check_capabilities({LoadedCapabilities.ROSTER})
+        
+        membership_resp = self.session.get('https://www.gradescope.com/courses/' + self.cid + '/memberships')
+        parsed_membership_resp = BeautifulSoup(membership_resp.text, 'html.parser')
+
+        authenticity_token = parsed_membership_resp.find('meta', attrs = {'name': 'csrf-token'} ).get('content')
+        role_params = {
+            "course_membership[role]" : role.value,
+        }
+        role_resp = self.session.patch('https://www.gradescope.com/courses/'+self.cid+'/memberships/'
+                                     +self.roster[name].data_id+'/update_role' ,
+                                     data = role_params,
+                                     headers = {'x-csrf-token': authenticity_token})
+
+        print(role_resp.status_code)
+        print(role_resp.headers)
+        print(role_resp.request.body)
+        # TODO this is highly wasteful, need to likely improve this. 
+        self.roster = {}
+        self._lazy_load_roster()
+
     def _lazy_load_assignments(self):
         '''
         Load the assignment dictionary from assignments. This is done lazily to avoid slowdown caused by getting
