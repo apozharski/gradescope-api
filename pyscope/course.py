@@ -2,8 +2,10 @@ from enum import Enum
 from bs4 import BeautifulSoup
 try:
    from person import GSPerson
+   from person import GSRole
 except ModuleNotFoundError:
    from .person import GSPerson
+   from .person import GSRole
 try:
    from assignment import GSAssignment
 except ModuleNotFoundError:
@@ -26,7 +28,36 @@ class GSCourse():
         self.assignments = {}
         self.roster = {} # TODO: Maybe shouldn't dict. 
         self.state = set() # Set of already loaded entitites (TODO what is the pythonic way to do this?)
+
+    def add_person(self, name, email, role, sid = None, notify = False):
+        self._check_capabilities({LoadedCapabilities.ROSTER})
         
+        membership_resp = self.session.get('https://www.gradescope.com/courses/' + self.cid + '/memberships')
+        parsed_membership_resp = BeautifulSoup(membership_resp.text, 'html.parser')
+
+        authenticity_token = parsed_membership_resp.find('meta', attrs = {'name': 'csrf-token'} ).get('content')        
+        person_params = {
+            "utf8": "✓",
+            "user[name]" : name,
+            "user[email]" : email,
+            "user[sid]" : "" if sid is None else sid, 
+            "course_membership[role]" : role.value,
+            "button" : ""
+        }
+        if notify:
+            person_params['notify_by_email'] = 1
+        # Seriously. Why is this website so inconsistent as to where the csrf token goes?????????
+        add_resp = self.session.post('https://www.gradescope.com/courses/' + self.cid + '/memberships',
+                                     data = person_params,
+                                     headers = {'x-csrf-token': authenticity_token})
+
+        print(add_resp.status_code)
+        print(add_resp.headers)
+        print(add_resp.request.body)
+        # TODO this is highly wasteful, need to likely improve this. 
+        self.roster = {}
+        self._lazy_load_roster()
+
     def _lazy_load_assignments(self):
         '''
         Load the assignment dictionary from assignments. This is done lazily to avoid slowdown caused by getting
@@ -63,20 +94,26 @@ class GSCourse():
         '''
         membership_resp = self.session.get('https://www.gradescope.com/courses/' + self.cid + '/memberships')
         parsed_membership_resp = BeautifulSoup(membership_resp.text, 'html.parser')
-        
+
         roster_table = []
         for student_row in parsed_membership_resp.find_all('tr', class_ = 'rosterRow'):
             row = []
             for td in student_row('td'):
                 row.append(td)
             roster_table.append(row)
-
+        
         for row in roster_table:
             name = row[0].text.rsplit(' ', 1)[0]
-            email = row[1].text
-            role = row[2].find('option', selected="selected").text
-            submissions = int(row[3].text)
-            linked = True if 'statusIcon-active' in row[4].find('i').get('class') else False
+            if len(row) == 6:
+                email = row[1].text
+                role = row[2].find('option', selected="selected").text
+                submissions = int(row[3].text)
+                linked = True if 'statusIcon-active' in row[4].find('i').get('class') else False
+            else:
+                email = row[2].text
+                role = row[3].find('option', selected="selected").text
+                submissions = int(row[4].text)
+                linked = True if 'statusIcon-active' in row[5].find('i').get('class') else False
             # TODO Make types reasonable.
             self.roster[name] = GSPerson(name, email, role, submissions, linked)
         self.state.add(LoadedCapabilities.ROSTER)

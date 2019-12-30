@@ -1,9 +1,9 @@
 from enum import Enum
 
 class GSRole(Enum):
-    INSTRUCTOR = 0
-    TA = 1
-    STUDENT = 2
+    STUDENT = 0
+    INSTRUCTOR = 1
+    TA = 2
     READER = 3
     
     def from_str(val):
@@ -21,6 +21,15 @@ class GSRole(Enum):
         else:
             raise GSRoleException("Not a valid role string: " + role)  
 
+    def to_str(val):
+        strings = {
+            GSRole.INSTRUCTOR : 'Instructor',
+            GSRole.STUDENT : 'Student',
+            GSRole.TA : 'TA',
+            GSRole.READER : 'Reader'
+        }
+        return strings[val]
+        
     class GSRoleException(Exception):
         pass
     
