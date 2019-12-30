@@ -29,7 +29,7 @@ class GSCourse():
         self.roster = {} # TODO: Maybe shouldn't dict. 
         self.state = set() # Set of already loaded entitites (TODO what is the pythonic way to do this?)
 
-    # ~~~~~~~~~~~~~~~~~~~~~~PEOPLE~~~~~~~~~~~~~~~~~~~~~~~
+    # ~~~~~~~~~~~~~~~~~~~~~~PEOPLE~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     def add_person(self, name, email, role, sid = None, notify = False):
         self._check_capabilities({LoadedCapabilities.ROSTER})
@@ -53,9 +53,6 @@ class GSCourse():
                                      data = person_params,
                                      headers = {'x-csrf-token': authenticity_token})
 
-        print(add_resp.status_code)
-        print(add_resp.headers)
-        print(add_resp.request.body)
         # TODO this is highly wasteful, need to likely improve this. 
         self.roster = {}
         self._lazy_load_roster()
@@ -76,9 +73,6 @@ class GSCourse():
                                      data = remove_params,
                                      headers = {'x-csrf-token': authenticity_token})
 
-        print(remove_resp.status_code)
-        print(remove_resp.headers)
-        print(remove_resp.request.body)
         # TODO this is highly wasteful, need to likely improve this. 
         self.roster = {}
         self._lazy_load_roster()
@@ -98,14 +92,11 @@ class GSCourse():
                                      data = role_params,
                                      headers = {'x-csrf-token': authenticity_token})
 
-        print(role_resp.status_code)
-        print(role_resp.headers)
-        print(role_resp.request.body)
         # TODO this is highly wasteful, need to likely improve this. 
         self.roster = {}
         self._lazy_load_roster()
 
-    # ~~~~~~~~~~~~~~~~~~~~~~ASSIGNMENTS~~~~~~~~~~~~~~~~~~~~~~~
+    # ~~~~~~~~~~~~~~~~~~~~~~ASSIGNMENTS~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     def add_assignment(self,
                        name,
@@ -139,10 +130,6 @@ class GSCourse():
                                             files = assignment_files,
                                             data = assignment_params)
 
-        print(assignment_resp.status_code)
-        print(assignment_resp.headers)
-        print(assignment_resp.request.headers)
-
         # TODO this is highly wasteful, need to likely improve this. 
         self.assignments = {}
         self._lazy_load_assignments()
@@ -164,12 +151,12 @@ class GSCourse():
                                      +self.assignments[name].aid,
                                      data = remove_params)
 
-        print(remove_resp.status_code)
-        print(remove_resp.headers)
         # TODO this is highly wasteful, need to likely improve this. 
         self.assignments = {}
         self._lazy_load_assignments()
-        
+
+    # ~~~~~~~~~~~~~~~~~~~~~~HOUSEKEEPING~~~~~~~~~~~~~~~~~~~~~~~~~
+
     def _lazy_load_assignments(self):
         '''
         Load the assignment dictionary from assignments. This is done lazily to avoid slowdown caused by getting
@@ -195,7 +182,7 @@ class GSCourse():
             complete = True if 'workflowCheck-complete' in row[5].get('class') else False
             regrades_on  = False if row[6].text == 'OFF' else True
             # TODO make these types reasonable
-            self.assignments[name] = GSAssignment(name, aid, points, percent_graded, complete, regrades_on)
+            self.assignments[name] = GSAssignment(name, aid, points, percent_graded, complete, regrades_on, self)
         self.state.add(LoadedCapabilities.ASSIGNMENTS)
         pass
 

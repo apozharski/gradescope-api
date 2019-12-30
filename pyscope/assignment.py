@@ -2,7 +2,7 @@
 
 class GSAssignment():
 
-    def __init__(self, name, aid, points, percent_graded, complete, regrades_on):
+    def __init__(self, name, aid, points, percent_graded, complete, regrades_on, course):
         '''Create a assignment object'''
         self.name = name
         self.aid = aid
@@ -10,6 +10,7 @@ class GSAssignment():
         self.percent_graded = percent_graded
         self.complete = complete
         self.regrades_on = regrades_on
+        self.course = course
 
     def add_instructor_submission(self, fname):
         '''
