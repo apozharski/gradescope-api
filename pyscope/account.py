@@ -45,13 +45,10 @@ class GSAccount():
             "course[entry_code_enabled]": 1 if entry_code_enabled else 0,
             "commit": "Create Course",
         }
-        print(course_data)
-
+        
         course_resp = self.session.post("https://www.gradescope.com/courses", params=course_data)
         # TODO This is brittle
         cid = course_resp.history[0].headers.get('Location').rsplit('/', 1)[1]
-        print(cid)
-        print(course_resp.history[0].headers)
         # TODO fix term, year union
         self.add_class(cid, name, shortname, term+" "+year, instructor = True )
         return cid
