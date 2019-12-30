@@ -31,7 +31,6 @@ class GSCourse():
         '''
         Load the assignment dictionary from assignments. This is done lazily to avoid slowdown caused by getting
         all the assignments for all classes. Also makes us less vulnerable to blocking.
-        TODO: Implement
         '''
         assignment_resp = self.session.get('https://www.gradescope.com/courses/'+self.cid+'/assignments')
         parsed_assignment_resp = BeautifulSoup(assignment_resp.text, 'html.parser')
@@ -91,3 +90,26 @@ class GSCourse():
             self._lazy_load_assignments()
         if LoadedCapabilities.ROSTER in missing:
             self._lazy_load_roster()
+
+    def delete(self):
+        course_edit_resp = self.session.get('https://www.gradescope.com/courses/'+self.cid+'/edit')
+        parsed_course_edit_resp = BeautifulSoup(course_edit_resp.text, 'html.parser')
+
+        authenticity_token = parsed_course_edit_resp.find('meta', attrs = {'name': 'csrf-token'} ).get('content')
+
+        print(authenticity_token)
+
+        delete_params = {
+            "_method": "delete",
+            "authenticity_token": authenticity_token
+        }
+        print(delete_params)
+
+        delete_resp = self.session.post('https://www.gradescope.com/courses/'+self.cid,
+                                        data = delete_params,
+                                        headers={
+                                            'referer': 'https://www.gradescope.com/courses/'+self.cid+'/edit',
+                                            'origin': 'https://www.gradescope.com'
+                                        })
+        
+        # TODO make this less brittle 

@@ -103,7 +103,3 @@ if __name__=="__main__":
     conn.login("email", "password")
     print(conn.state)
     conn.get_account()
-    print(conn.account.instructor_courses)
-    print(conn.account.student_courses)
-    conn.account.instructor_courses['58923']._lazy_load_roster()
-    conn.account.instructor_courses['58923']._lazy_load_assignments()
