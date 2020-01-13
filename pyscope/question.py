@@ -1,14 +1,14 @@
 from bs4 import BeautifulSoup
 
-class GSAssignment():
+class GSQuestion():
 
-    def __init__(self, name, qid, points):
+    def __init__(self, qid, title, weight, children, parent_id, content):
         '''Create a assignment object'''
-        self.name = name
+        self.title = title
         self.qid = qid
-        self.children = {}
-        self.points = points
+        self.children = []
+        self.weight = weight
+        self.parent_id = parent_id
+        self.content = content
         
-
-    def add_child(self, child):
-        self.children[self.child.name] = child
+    
