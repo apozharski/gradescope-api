@@ -1,3 +1,4 @@
+import requests
 from bs4 import BeautifulSoup
 try:
    from question import GSQuestion
@@ -32,6 +33,7 @@ class GSAssignment():
         else:
             new_q_data.append(new_q)
 
+        # TODO add id region support
         new_patch = {'assignment': {'identification_regions': {'name': None, 'sid': None}},
                      'question_data': new_q_data}
 
@@ -45,10 +47,47 @@ class GSAssignment():
                                                headers = {'x-csrf-token': authenticity_token,
                                                           'Content-Type': 'application/json'},
                                                data = json.dumps(new_patch,separators=(',',':')))
+
+        if patch_resp.status_code != requests.codes.ok:
+            patch_resp.raise_for_status()
+
+        # TODO this should be done smarter :(
+        self.questions = []
+        self._lazy_load_questions()
+
+    # TODO allow this to be a predicate remove
+    def remove_question(self, title=None, qid=None):
+        if not title and not qid:
+            return
+        new_q_data = [q.to_patch() for q in self.questions]
+
+        # TODO Yes this is slow and ugly, should be improved
+        if title: 
+            new_q_data = [q for q in new_q_data if q['title'] != title]
+            for q in new_q_data:
+                if q.get('children'):
+                    q['children'] = [sq for sq in q['children'] if sq['title'] != title]
+        else:
+            new_q_data = [q for q in new_q_data if q['id'] != qid]
+            for q in new_q_data:
+                if q.get('children'):
+                    q['children'] = [sq for sq in q['children'] if sq['id'] != qid]
+
+        new_patch = {'assignment': {'identification_regions': {'name': None, 'sid': None}},
+                     'question_data': new_q_data}
+
+        outline_resp = self.course.session.get('https://www.gradescope.com/courses/' + self.course.cid +
+                                               '/assignments/' + self.aid + '/outline/edit')
+        parsed_outline_resp = BeautifulSoup(outline_resp.text, 'html.parser')
+        authenticity_token = parsed_outline_resp.find('meta', attrs = {'name': 'csrf-token'} ).get('content')
+
+        patch_resp = self.course.session.patch('https://www.gradescope.com/courses/' + self.course.cid +
+                                               '/assignments/' + self.aid + '/outline/',
+                                               headers = {'x-csrf-token': authenticity_token,
+                                                          'Content-Type': 'application/json'},
+                                               data = json.dumps(new_patch,separators=(',',':')))
+
         print(patch_resp.status_code)
-        print(patch_resp.request.headers)
-        print(patch_resp.request.body)
-    
     # TODO
     def add_instructor_submission(self, fname):
         '''
