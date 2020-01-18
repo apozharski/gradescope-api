@@ -87,14 +87,32 @@ class GSAssignment():
                                                           'Content-Type': 'application/json'},
                                                data = json.dumps(new_patch,separators=(',',':')))
 
-        print(patch_resp.status_code)
-    # TODO
+        if patch_resp.status_code != requests.codes.ok:
+            patch_resp.raise_for_status()
+
+        # TODO this should be done smarter :(
+        self.questions = []
+        self._lazy_load_questions()
+        
+    # TODO INCOMPLETE
     def add_instructor_submission(self, fname):
         '''
         Upload a PDF submission.
         '''
-        pass
+        submission_resp = self.session.get('https://www.gradescope.com/courses/'+self.course.cid+
+                                           '/assignments/'+self.aid+'/submission_batches')
+        parsed_assignment_resp = BeautifulSoup(submission_resp.text, 'html.parser')
+        authenticity_token = parsed_assignment_resp.find('meta', attrs = {'name': 'csrf-token'} ).get('content')
 
+        submission_files = {
+            "file" : open(template_file, 'rb')
+        }
+
+        submission_resp = self.session.post('https://www.gradescope.com/courses/'+self.course.cid+
+                                            '/assignments/'+self.aid+'/submission_batches',
+                                            files = assignment_files
+                                            headers = {'x-csrf-token': authenticity_token})
+        
     # TODO
     def publish_grades(self):
         pass
